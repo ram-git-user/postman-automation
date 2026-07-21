@@ -4,7 +4,10 @@ on: push
 
 jobs:
   automated-api-tests:
-    runs-on: windows-latest
+    runs-on: 
+      - self-hosted
+      - windows
+      - X64
     steps:
       - uses: actions/checkout@v4
       - name: Install Postman CLI
