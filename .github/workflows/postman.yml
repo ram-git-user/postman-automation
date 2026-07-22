@@ -12,7 +12,7 @@ on:
   workflow_dispatch:      # Allows manual execution
   push:                   # Runs when you push changes
   schedule:
-    - cron: '0 * * * *'   # Runs every hour at minute 0
+    - cron: '*/15 * * * *'   # Runs every hour at minute 0
 
 jobs:
   automated-api-tests:
