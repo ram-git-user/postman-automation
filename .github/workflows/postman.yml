@@ -6,7 +6,30 @@ on:
 
 jobs:
   automated-api-tests:
+    runs-on:name: Automated API tests using Postman CLI
+
+on:
+  workflow_dispatch:      # Allows manual execution
+  push:                   # Runs when you push changes
+  schedule:
+    - cron: '0 * * * *'   # Runs every hour at minute 0
+
+jobs:
+  automated-api-tests:
     runs-on:
+      - self-hosted
+      - Windows
+      - X64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Postman CLI
+        run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
+
+      - name: Run API tests
+        run: |
+          postman collection run "56639983-7d72ec11-0b96-4fe5-aa76-315f18ed523d"
       - self-hosted
       - Windows
       - X64
