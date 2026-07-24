@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
   push:
   schedule:
-    - cron: '*/15 * * * *'   # Every 15 minutes (UTC)
+    #- cron: '*/15 * * * *'   
+    # Every 15 minutes (UTC)
 
 jobs:
   automated-api-tests:
