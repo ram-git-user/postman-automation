@@ -1,0 +1,21 @@
+name: Run API Collection
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"
+
+  workflow_dispatch:
+
+jobs:
+  run-collection:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Postman CLI
+        run: postman --version
+
+      - name: Run collection
+        run: postman collection run collection.json
