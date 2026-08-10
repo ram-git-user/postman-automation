@@ -1,4 +1,4 @@
-name: API Production Validation v2
+name: API Production Validation
 
 on:
   push:
@@ -14,34 +14,26 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout Latest Repository
-        uses: actions/checkout@v4
-
-      - name: Show Collection Version
-        run: |
-          git log -1 --oneline
-          ls -l collection.json
+      - uses: actions/checkout@v4
 
       - name: Verify Postman CLI
         run: postman --version
 
       - name: Execute Latest Collection
-        run: |
-          postman collection run collection.json
+        run: postman collection run collection.json
 
       - name: Ready for Production
         if: success()
         run: |
           echo "=========================================="
-          echo " ALL API TESTS PASSED"
-          echo " READY FOR PRODUCTION"
+          echo "ALL API TESTS PASSED"
+          echo "READY FOR PRODUCTION"
           echo "=========================================="
 
       - name: Validation Failed
         if: failure()
         run: |
           echo "=========================================="
-          echo " API TESTS FAILED"
-          echo " NOT READY FOR PRODUCTION"
+          echo "API TESTS FAILED"
+          echo "NOT READY FOR PRODUCTION"
           echo "=========================================="
-          exit 1
