@@ -1,0 +1,78 @@
+{
+  "info": {
+    "_postman_id": "11111111-1111-1111-1111-111111111111",
+    "name": "User Management",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Update User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              ""
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "SOAPAction",
+            "value": "urn:UDS.UpdateUser"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:msgs=\"http://ws.arcot.com/ArcotUserRegistrySvc/1.0/msgs\" xmlns:ns=\"http://ws.arcot.com/UserSchema/1.0\"><soap:Header/><soap:Body><msgs:updateUserRequest><msgs:userDetailsEx><ns:userId><ns:orgName>testbob</ns:orgName><ns:userName>test1</ns:userName></ns:userId><ns:emailId qualifier=\"emailid\">jaya@gmail.com</ns:emailId><ns:telephoneNumber qualifier=\"telephone\">9487378687</ns:telephoneNumber><ns:firstName>jaya</ns:firstName><ns:lastName>subha</ns:lastName></msgs:userDetailsEx></msgs:updateUserRequest></soap:Body></soap:Envelope>"
+        },
+        "url": {
+          "raw": "http://192.168.10.35:7001/arcotuds/services/ArcotUserRegistrySvc",
+          "protocol": "http",
+          "host": [
+            "192",
+            "168",
+            "10",
+            "35"
+          ],
+          "port": "7001",
+          "path": [
+            "arcotuds",
+            "services",
+            "ArcotUserRegistrySvc"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": []
+}
