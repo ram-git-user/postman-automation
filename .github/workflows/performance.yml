@@ -3,8 +3,8 @@ name: Automated Performance Test
 on:
   workflow_dispatch:
   push:
-  schedule:
-    - cron: '*/15 * * * *'   # Every hour
+  #schedule:
+    #- cron: '*/15 * * * *'   # Every hour
 
 jobs:
   performance-test:
