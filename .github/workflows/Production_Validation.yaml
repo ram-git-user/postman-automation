@@ -1,6 +1,10 @@
 name: API Production Validation
 
 on:
+  push:
+    branches:
+      - main
+
   workflow_dispatch:
 
 jobs:
@@ -8,15 +12,18 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      # Checkout latest code
+      # Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # Find latest collection_v*.json
+      # Show Repository Files
+      - name: Show Repository Files
+        shell: powershell
+        run: |
+          Get-ChildItem
+
+      # Find Latest Collection Version
       - name: Find Latest Collection
-        id: latest
         shell: powershell
         run: |
           $latest = Get-ChildItem "collection_v*.json" |
@@ -28,74 +35,61 @@ jobs:
               exit 1
           }
 
-          Write-Host "Latest Collection: $($latest.Name)"
-          "LATEST_COLLECTION=$($latest.Name)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Latest Collection Found:"
+          Write-Host $latest.Name
+
+          "LATEST_COLLECTION=$($latest.Name)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      # Display Selected Collection
+      - name: Display Selected Collection
+        shell: powershell
+        run: |
+          Write-Host "Selected Collection: $env:LATEST_COLLECTION"
 
       # Verify Postman CLI
       - name: Verify Postman CLI
         run: postman --version
 
-      # Execute latest collection
+      # Execute Latest Collection
       - name: Execute Latest Collection
         shell: powershell
         run: |
+          Write-Host "Running $env:LATEST_COLLECTION"
           postman collection run "$env:LATEST_COLLECTION"
 
-      # Promote to stable collection if successful
+      # Promote to Stable Collection
       - name: Promote Collection
         if: success()
         shell: powershell
         run: |
           Copy-Item "$env:LATEST_COLLECTION" "collection.json" -Force
-          Write-Host "Promoted $env:LATEST_COLLECTION to collection.json"
 
-      # Configure Git
-      - name: Configure Git
-        if: success()
-        shell: powershell
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          Write-Host ""
+          Write-Host "=========================================="
+          Write-Host "Promoted $env:LATEST_COLLECTION"
+          Write-Host "to collection.json"
+          Write-Host "=========================================="
 
-      # Commit changes
-      - name: Commit Changes
-        if: success()
-        shell: powershell
-        run: |
-          git add collection.json
-
-          $status = git status --porcelain
-
-          if ($status) {
-              git commit -m "Promote $env:LATEST_COLLECTION to collection.json"
-          }
-          else {
-              Write-Host "No changes to commit."
-          }
-
-      # Push changes
-      - name: Push Changes
-        if: success()
-        shell: powershell
-        run: |
-          git push
-
-      # Success message
+      # Success Message
       - name: Production Ready
         if: success()
+        shell: powershell
         run: |
-          echo "=========================================="
-          echo "ALL API TESTS PASSED"
-          echo "collection.json updated"
-          echo "READY FOR PRODUCTION"
-          echo "=========================================="
+          Write-Host ""
+          Write-Host "=========================================="
+          Write-Host " ALL API TESTS PASSED"
+          Write-Host " collection.json updated locally"
+          Write-Host " READY FOR PRODUCTION"
+          Write-Host "=========================================="
 
-      # Failure message
+      # Failure Message
       - name: Validation Failed
         if: failure()
+        shell: powershell
         run: |
-          echo "=========================================="
-          echo "API TESTS FAILED"
-          echo "collection.json NOT changed"
-          echo "NOT READY FOR PRODUCTION"
-          echo "=========================================="
+          Write-Host ""
+          Write-Host "=========================================="
+          Write-Host " API TESTS FAILED"
+          Write-Host " Existing collection.json retained"
+          Write-Host " NOT READY FOR PRODUCTION"
+          Write-Host "=========================================="
