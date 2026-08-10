@@ -2,11 +2,7 @@ name: Automated API tests using Postman CLI
 
 on:
   workflow_dispatch:
-  push:
-  #schedule:
-    #- cron: '*/15 * * * *'   
-    # Every 15 minutes (UTC)
-
+  
 jobs:
   automated-api-tests:
     runs-on:
