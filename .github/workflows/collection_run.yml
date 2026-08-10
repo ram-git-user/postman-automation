@@ -1,21 +1,35 @@
-name: Run API Collection
+name: API Production Validation
 
 on:
-  schedule:
-    - cron: "0 */2 * * *"
-
   workflow_dispatch:
 
 jobs:
-  run-collection:
+  api-test:
     runs-on: self-hosted
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Login to Postman CLI
-        run: postman login --with-api-key ${{ secrets.POSTMAN_API_KEY }}
+      - name: Check Postman CLI
+        run: postman --version
 
-      - name: Run collection
-        run: postman collection run collection.json
+      - name: Run API Collection
+        run: |
+          postman collection run collection.json
+
+      - name: Production Ready
+        if: success()
+        run: |
+          echo "=========================================="
+          echo "API TESTED SUCCESSFULLY"
+          echo "READY TO MOVE TO PRODUCTION"
+          echo "=========================================="
+
+      - name: API Testing Failed
+        if: failure()
+        run: |
+          echo "=========================================="
+          echo "API TESTING FAILED"
+          echo "NOT READY FOR PRODUCTION"
+          echo "=========================================="
