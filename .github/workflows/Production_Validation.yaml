@@ -1,12 +1,6 @@
 name: API Production Validation
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'collection.json'
-
   workflow_dispatch:
 
 jobs:
@@ -14,26 +8,94 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - uses: actions/checkout@v4
+      # Checkout latest code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      # Find latest collection_v*.json
+      - name: Find Latest Collection
+        id: latest
+        shell: powershell
+        run: |
+          $latest = Get-ChildItem "collection_v*.json" |
+                    Sort-Object LastWriteTime -Descending |
+                    Select-Object -First 1
+
+          if ($null -eq $latest) {
+              Write-Host "No collection_v*.json found."
+              exit 1
+          }
+
+          Write-Host "Latest Collection: $($latest.Name)"
+          "LATEST_COLLECTION=$($latest.Name)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # Verify Postman CLI
       - name: Verify Postman CLI
         run: postman --version
 
+      # Execute latest collection
       - name: Execute Latest Collection
-        run: postman collection run collection.json
+        shell: powershell
+        run: |
+          postman collection run "$env:LATEST_COLLECTION"
 
-      - name: Ready for Production
+      # Promote to stable collection if successful
+      - name: Promote Collection
+        if: success()
+        shell: powershell
+        run: |
+          Copy-Item "$env:LATEST_COLLECTION" "collection.json" -Force
+          Write-Host "Promoted $env:LATEST_COLLECTION to collection.json"
+
+      # Configure Git
+      - name: Configure Git
+        if: success()
+        shell: powershell
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      # Commit changes
+      - name: Commit Changes
+        if: success()
+        shell: powershell
+        run: |
+          git add collection.json
+
+          $status = git status --porcelain
+
+          if ($status) {
+              git commit -m "Promote $env:LATEST_COLLECTION to collection.json"
+          }
+          else {
+              Write-Host "No changes to commit."
+          }
+
+      # Push changes
+      - name: Push Changes
+        if: success()
+        shell: powershell
+        run: |
+          git push
+
+      # Success message
+      - name: Production Ready
         if: success()
         run: |
           echo "=========================================="
           echo "ALL API TESTS PASSED"
+          echo "collection.json updated"
           echo "READY FOR PRODUCTION"
           echo "=========================================="
 
+      # Failure message
       - name: Validation Failed
         if: failure()
         run: |
           echo "=========================================="
           echo "API TESTS FAILED"
+          echo "collection.json NOT changed"
           echo "NOT READY FOR PRODUCTION"
           echo "=========================================="
