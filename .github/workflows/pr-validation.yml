@@ -79,7 +79,7 @@ jobs:
 
       - name: Detect changed collections
         id: detect
-        run: ./scripts/detect-changes.ps1 -BaseRef "origin/${{ github.base_ref }}" -HeadRef "HEAD"
+        run: ./scripts/detect-changes.ps1
 
       - name: Resolve full impact (dependencies + dependents) of changed collection(s)
         id: resolve
