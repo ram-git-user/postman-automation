@@ -1,0 +1,45 @@
+name: Manual Rollback
+
+# Emergency-use workflow. Anyone with write access can trigger this from the
+# Actions tab to force main back to a specific stable tag (defaults to the
+# most recent one). Production-validation.yml also calls the same script
+# automatically on failure - this is for the "we shipped it and something
+# broke in prod 2 hours later" case.
+
+on:
+  workflow_dispatch:
+    inputs:
+      stableTag:
+        description: 'Git tag to roll back to'
+        required: false
+        default: 'last-stable'
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    runs-on: [self-hosted, Windows]
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Roll back main
+        run: ./scripts/rollback.ps1 -StableTag "${{ github.event.inputs.stableTag }}" -Branch "main"
+
+      - name: Notify team
+        run: >-
+          ./scripts/notify.ps1 -Status "PASSED" -Message "Manual rollback executed - main now points at tag '${{ github.event.inputs.stableTag }}' (triggered by ${{ github.actor }})."
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL }}

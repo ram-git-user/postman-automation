@@ -1,0 +1,88 @@
+name: Develop Branch Validation
+
+# Runs the full regression suite every time develop is updated (i.e. after a
+# PR merges). This is the integration gate before anything is proposed to main.
+# Also keeps dependency-map.json in sync if a new collection slipped in and
+# commits that back, so the map stays authoritative over time.
+
+on:
+  push:
+    branches: [ develop ]
+    paths:
+      - 'collections/**'
+
+permissions:
+  contents: write
+
+jobs:
+  regression:
+    runs-on: [self-hosted, Windows]
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clean workspace state from previous runs
+        run: |
+          Remove-Item -Path reports -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+
+      - name: Ensure Node.js and Newman are available
+        run: |
+          if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+            throw "Node.js is not installed on this self-hosted runner."
+          }
+          if (-not (Get-Command newman -ErrorAction SilentlyContinue)) {
+            npm install -g newman newman-reporter-htmlextra
+          }
+
+      - name: Auto-register any new collections and commit if changed
+        run: |
+          ./scripts/sync-dependency-map.ps1
+          git config user.name "api-automation-bot"
+          git config user.email "automation@company.com"
+          git add dependency/dependency-map.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "chore: auto-register new collection(s) in dependency-map.json [skip ci]"
+            git push
+          }
+
+      - name: Run full regression
+        id: regression
+        run: ./scripts/run-regression.ps1
+
+      - name: Notify - failure
+        if: failure()
+        run: ./scripts/notify.ps1 -Status "FAILED" -Message "Develop branch regression FAILED after merge (commit ${{ github.sha }})."
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL }}
+
+      - name: Notify - success
+        if: success()
+        run: ./scripts/notify.ps1 -Status "PASSED" -Message "Develop branch regression PASSED (commit ${{ github.sha }}). Ready to raise a PR to main."
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: develop-regression-reports-${{ github.run_number }}
+          path: reports/

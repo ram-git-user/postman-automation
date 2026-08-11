@@ -1,0 +1,110 @@
+name: PR Validation
+
+# Fires on any PR into develop that touches a collection.
+# Strategy: auto-register any brand-new collection, test the changed API(s) +
+# everything they affect (upstream deps AND downstream dependents) first for
+# fast feedback, then the full regression, then notify the team with a
+# detailed report either way.
+
+on:
+  pull_request:
+    branches: [ develop ]
+    paths:
+      - 'collections/**'
+
+jobs:
+  validate:
+    runs-on: [self-hosted, Windows]
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clean workspace state from previous runs
+        run: |
+          Remove-Item -Path reports -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+
+      - name: Ensure Node.js and Newman are available
+        run: |
+          if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+            throw "Node.js is not installed on this self-hosted runner. Install Node.js LTS once and re-register the runner."
+          }
+          if (-not (Get-Command newman -ErrorAction SilentlyContinue)) {
+            Write-Host "Newman not found - installing globally (one-time on this runner)..."
+            npm install -g newman newman-reporter-htmlextra
+          } else {
+            Write-Host "Newman already installed on this runner - skipping install."
+          }
+
+      - name: Auto-register any new collections
+        id: sync
+        run: ./scripts/sync-dependency-map.ps1
+
+      - name: Detect changed collections
+        id: detect
+        run: ./scripts/detect-changes.ps1 -BaseRef "origin/${{ github.base_ref }}" -HeadRef "HEAD"
+
+      - name: Resolve full impact (dependencies + dependents) of changed collection(s)
+        id: resolve
+        if: steps.detect.outputs.changed_collections != ''
+        run: |
+          $changed = "${{ steps.detect.outputs.changed_collections }}".Split(',')
+          ./scripts/resolve-dependency.ps1 -ChangedCollections $changed
+
+      - name: Run changed API(s) + impacted dependencies/dependents (fast feedback)
+        if: steps.detect.outputs.changed_collections != ''
+        run: |
+          $order = "${{ steps.resolve.outputs.execution_order }}".Split(',')
+          foreach ($c in $order) {
+            ./scripts/run-api.ps1 -CollectionName $c
+          }
+
+      - name: Run full regression (catch any remaining downstream impact)
+        if: steps.detect.outputs.changed_collections != ''
+        run: ./scripts/run-regression.ps1
+
+      - name: No collection changes detected
+        if: steps.detect.outputs.changed_collections == ''
+        run: Write-Host "No collections/*.json changed in this PR - nothing to validate."
+
+      - name: Notify team - failure with details
+        if: failure()
+        run: |
+          ./scripts/notify.ps1 -Status "FAILED" `
+            -Message "PR #${{ github.event.pull_request.number }} ('${{ github.event.pull_request.title }}') failed API validation. Changed: ${{ steps.detect.outputs.changed_collections }}"
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL }}
+
+      - name: Notify team - success
+        if: success() && steps.detect.outputs.changed_collections != ''
+        run: |
+          ./scripts/notify.ps1 -Status "PASSED" `
+            -Message "PR #${{ github.event.pull_request.number }} passed validation for: ${{ steps.detect.outputs.changed_collections }} (and full regression)."
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL }}
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-${{ github.event.pull_request.number }}-validation-reports
+          path: reports/

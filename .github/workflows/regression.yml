@@ -1,0 +1,57 @@
+name: Nightly Regression (Production)
+
+# Independently re-validates the currently promoted collections-production/*
+# set on a schedule, catching "it worked yesterday but the downstream SOAP
+# service changed underneath us" drift that no code change would trigger.
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 02:00 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  nightly:
+    runs-on: [self-hosted, Windows]
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clean workspace state from previous runs
+        run: |
+          Remove-Item -Path reports -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+
+      - name: Ensure Node.js and Newman are available
+        run: |
+          if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+            throw "Node.js is not installed on this self-hosted runner."
+          }
+          if (-not (Get-Command newman -ErrorAction SilentlyContinue)) {
+            npm install -g newman newman-reporter-htmlextra
+          }
+
+      - name: Run regression against production collections
+        run: |
+          Copy-Item collections-production/*.json collections/ -Force
+          ./scripts/run-regression.ps1
+
+      - name: Notify on failure
+        if: failure()
+        run: ./scripts/notify.ps1 -Status "FAILED" -Message "Nightly production regression FAILED. This did not come from a code change - re-check the downstream services/environment."
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-regression-reports-${{ github.run_number }}
+          path: reports/
