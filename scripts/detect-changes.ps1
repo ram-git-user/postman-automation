@@ -17,11 +17,12 @@ Write-Host "Comparing $BaseRef ... $HeadRef"
 # Make sure we actually have the base ref locally (shallow clones on Actions runners)
 git fetch origin --depth=100 2>$null | Out-Null
 
-$changedFiles = git diff --name-only "$BaseRef" "$HeadRef" -- collections/
-$changedFiles = $changedFiles | Where-Object {
-    $_ -match '^collections/.*\.json$' -and ($_ -notmatch 'regression\.json$')
-}
+$changedFiles = git diff --diff-filter=ACM --name-only "$BaseRef" "$HeadRef" -- collections/
 
+$changedFiles = $changedFiles | Where-Object {
+    $_ -match '^collections/.*\.json$' -and
+    ($_ -notmatch 'regression\.json$')
+}
 $changedCollections = @()
 foreach ($file in $changedFiles) {
     $name = [System.IO.Path]::GetFileNameWithoutExtension($file)
