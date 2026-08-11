@@ -18,9 +18,11 @@ on:
 jobs:
   validate:
     runs-on: [self-hosted, Windows]
+
     defaults:
       run:
         shell: powershell
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,34 +34,32 @@ jobs:
           Remove-Item -Path reports -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Force -Path reports | Out-Null
 
+      - name: Ensure Node.js and Newman are available
+        shell: powershell
+        run: |
+          if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+            throw "Node.js is not installed."
+          }
 
-- name: Ensure Node.js and Newman are available
-  shell: powershell
-  run: |
-    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-      throw "Node.js is not installed."
-    }
+          if (-not (Get-Command newman -ErrorAction SilentlyContinue)) {
+            Write-Host "Installing Newman..."
+            npm install -g newman
+          }
 
-    if (-not (Get-Command newman -ErrorAction SilentlyContinue)) {
-      Write-Host "Installing Newman..."
-      npm install -g newman
-    }
+          Write-Host "Installing Newman Reporters..."
+          npm install -g newman-reporter-htmlextra
+          npm install -g newman-reporter-junitfull
 
-    Write-Host "Installing Newman Reporters..."
-    npm install -g newman-reporter-htmlextra
-    npm install -g newman-reporter-junitfull
+          Write-Host "===================================="
+          Write-Host "Node Version"
+          node -v
 
-    Write-Host "===================================="
-    Write-Host "Node Version"
-    node -v
+          Write-Host "Newman Version"
+          newman -v
 
-    Write-Host "Newman Version"
-    newman -v
-
-    Write-Host "Installed Global Packages"
-    npm list -g --depth=0
-    Write-Host "===================================="
-
+          Write-Host "Installed Global Packages"
+          npm list -g --depth=0
+          Write-Host "===================================="
 
       - name: Mark Repository as Safe
         run: |
@@ -96,7 +96,8 @@ jobs:
 
       - name: No collection changes detected
         if: steps.detect.outputs.changed_collections == ''
-        run: Write-Host "No collections/*.json changed in this PR - nothing to validate."
+        run: |
+          Write-Host "No collections/*.json changed in this PR - nothing to validate."
 
       - name: Notify team - failure with details
         if: failure()
