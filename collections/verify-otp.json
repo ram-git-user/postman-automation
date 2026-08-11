@@ -7,7 +7,6 @@
   },
   "item": [
     {
-      #test
       "name": "Verify OTP",
       "event": [
         {
@@ -63,3 +62,5 @@
     { "key": "verifyOtpHost", "value": "http://192.168.10.35:9744" }
   ]
 }
+
+
