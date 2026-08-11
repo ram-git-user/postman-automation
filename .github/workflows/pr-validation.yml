@@ -44,6 +44,12 @@ jobs:
             Write-Host "Newman already installed on this runner - skipping install."
           }
 
+      - name: Mark Repository as Safe
+        run: |
+          git config --global --add safe.directory "$env:GITHUB_WORKSPACE"
+          Write-Host "Configured safe directory:"
+          git config --global --get-all safe.directory
+
       - name: Auto-register any new collections
         id: sync
         run: ./scripts/sync-dependency-map.ps1
