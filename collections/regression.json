@@ -1,0 +1,259 @@
+{
+  "info": {
+    "_postman_id": "a1000000-0000-4000-8000-0000000000ff",
+    "name": "Regression Suite (Update User -> Risk Evaluate -> Issuance OTP -> Verify OTP)",
+    "description": "Convenience collection for manually running the full flow inside the Postman GUI Collection Runner, in order. The CI pipeline does NOT use this file - it runs collections/*.json individually via scripts/run-regression.ps1 so per-API pass/fail reporting stays granular. This file is regenerated from the individual collections; do not hand-edit request bodies here, edit the source collection instead.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Update User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"No SOAP Fault returned\", function () {",
+              "    pm.expect(pm.response.text()).to.not.include(\"soap:Fault\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "SOAPAction",
+            "value": "urn:UDS.UpdateUser"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:msgs=\"http://ws.arcot.com/ArcotUserRegistrySvc/1.0/msgs\" xmlns:ns=\"http://ws.arcot.com/UserSchema/1.0\">\r\n<soap:Header/>\r\n<soap:Body>\r\n<msgs:updateUserRequest>\r\n<msgs:userDetailsEx>\r\n<ns:userId>\r\n<ns:orgName>testbob</ns:orgName>\r\n<ns:userName>test1</ns:userName>\r\n</ns:userId>\r\n<ns:emailId qualifier=\"emailid\">jaya@gmail.com</ns:emailId>\r\n<ns:telephoneNumber qualifier=\"telephone\">9487378687</ns:telephoneNumber>\r\n<ns:firstName>jaya</ns:firstName>\r\n<ns:lastName>subha</ns:lastName>\r\n</msgs:userDetailsEx>\r\n</msgs:updateUserRequest>\r\n</soap:Body>\r\n</soap:Envelope>"
+        },
+        "url": {
+          "raw": "{{updateUserHost}}/arcotuds/services/ArcotUserRegistrySvc",
+          "host": [
+            "{{updateUserHost}}"
+          ],
+          "path": [
+            "arcotuds",
+            "services",
+            "ArcotUserRegistrySvc"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Risk Evaluate",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"No SOAP Fault returned\", function () {",
+              "    pm.expect(pm.response.text()).to.not.include(\"soapenv:Fault\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/xml"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:wsdl=\"http://ws.arcot.com/RiskFortEvaluateRiskAPI/3.0/wsdl\">\r\n<soapenv:Header/>\r\n<soapenv:Body>\r\n<wsdl:EvaluateRiskRequest>\r\n<wsdl:locationContext>\r\n<wsdl:clientIPAddress>1.2.170.60</wsdl:clientIPAddress>\r\n</wsdl:locationContext>\r\n<wsdl:userContext>\r\n<wsdl:orgName>testbob</wsdl:orgName>\r\n<wsdl:userName>test1</wsdl:userName>\r\n</wsdl:userContext>\r\n</wsdl:EvaluateRiskRequest>\r\n</soapenv:Body>\r\n</soapenv:Envelope>"
+        },
+        "url": {
+          "raw": "{{riskEvaluateHost}}/services/RiskFortEvaluateRiskSvc",
+          "host": [
+            "{{riskEvaluateHost}}"
+          ],
+          "path": [
+            "services",
+            "RiskFortEvaluateRiskSvc"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Issuance OTP",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "let response = pm.response.text();",
+              "",
+              "console.log(\"===== SOAP RESPONSE =====\");",
+              "console.log(response);",
+              "",
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "let otpMatch = response.match(/<.*?:otp>(.*?)<\\/.*?:otp>/);",
+              "",
+              "if (otpMatch) {",
+              "    let otp = otpMatch[1].trim();",
+              "    console.log(\"Extracted OTP:\", otp);",
+              "",
+              "    // Stored at the ENVIRONMENT level (not collection level) so it survives",
+              "    // across separate `newman run` invocations when chained via",
+              "    // --export-environment / -e in scripts/run-api.ps1.",
+              "    pm.environment.set(\"otp\", otp);",
+              "",
+              "    console.log(\"Stored OTP:\", pm.environment.get(\"otp\"));",
+              "",
+              "    pm.test(\"OTP extracted successfully\", function () {",
+              "        pm.expect(otp).to.not.be.empty;",
+              "    });",
+              "} else {",
+              "    console.log(\"OTP NOT FOUND\");",
+              "    pm.test(\"OTP extracted successfully\", function () {",
+              "        pm.expect.fail(\"OTP was not found in the SOAP response\");",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/xml"
+          },
+          {
+            "key": "SOAPAction",
+            "value": "urn:CreateCredential"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:msgs=\"http://ws.arcot.com/WebFortIssuanceAPI/7.0/msgs\" xmlns:xsd=\"http://ws.arcot.com/WebFortCommonAPI/7.0/xsd\" xmlns:xsd1=\"http://ws.arcot.com/WebFortIssuanceAPI/7.0/xsd\">\r\n    <soap:Header/>\r\n    <soap:Body>\r\n        <msgs:CredentialRequest>\r\n            <msgs:userName>test1</msgs:userName>\r\n            <msgs:orgName>testbob</msgs:orgName>\r\n            <msgs:otpInput>\r\n                <xsd1:profileName>COMMON_OTP</xsd1:profileName>\r\n            </msgs:otpInput>\r\n        </msgs:CredentialRequest>\r\n    </soap:Body>\r\n</soap:Envelope>"
+        },
+        "url": {
+          "raw": "{{issuanceOtpHost}}/services/WebFortIssuanceSvc",
+          "host": [
+            "{{issuanceOtpHost}}"
+          ],
+          "path": [
+            "services",
+            "WebFortIssuanceSvc"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Verify OTP",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.environment.get(\"otp\")) {",
+              "    console.warn(\"WARNING: 'otp' environment variable is empty. \" +",
+              "      \"Verify OTP must run after Issuance OTP with a chained environment file.\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"No SOAP Fault returned\", function () {",
+              "    pm.expect(pm.response.text()).to.not.include(\"soapenv:Fault\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "SOAPAction",
+            "value": "urn:VerifyOTP",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "<soapenv:Envelope xmlns:soapenv=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:msgs=\"http://ws.arcot.com/WebFortAuthAPI/7.0/msgs\" xmlns:xsd=\"http://ws.arcot.com/WebFortCommonAPI/7.0/xsd\">\r\n   <soapenv:Header/>\r\n   <soapenv:Body>\r\n      <msgs:VerifyOTP>\r\n         <msgs:userName>test1</msgs:userName>\r\n         <msgs:orgName>testbob</msgs:orgName>\r\n         <msgs:otp>{{otp}}</msgs:otp>\r\n         <msgs:additionalInput>\r\n            <xsd:pairs>\r\n               <xsd:name>AR_WF_AUTH_POLICY</xsd:name>\r\n               <xsd:value>COMMON_OTP_POLICY</xsd:value>\r\n            </xsd:pairs>\r\n         </msgs:additionalInput>\r\n      </msgs:VerifyOTP>\r\n   </soapenv:Body>\r\n</soapenv:Envelope>",
+          "options": {
+            "raw": {
+              "language": "xml"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{verifyOtpHost}}/services/WebFortAuthSvc",
+          "host": [
+            "{{verifyOtpHost}}"
+          ],
+          "path": [
+            "services",
+            "WebFortAuthSvc"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "updateUserHost",
+      "value": "http://192.168.10.35:7001"
+    },
+    {
+      "key": "riskEvaluateHost",
+      "value": "http://192.168.10.35:7778"
+    },
+    {
+      "key": "issuanceOtpHost",
+      "value": "http://192.168.10.35:9744"
+    },
+    {
+      "key": "verifyOtpHost",
+      "value": "http://192.168.10.35:9744"
+    },
+    {
+      "key": "otp",
+      "value": ""
+    }
+  ]
+}

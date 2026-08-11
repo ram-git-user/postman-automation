@@ -1,0 +1,64 @@
+{
+  "info": {
+    "_postman_id": "a1000000-0000-4000-8000-000000000004",
+    "name": "Verify OTP",
+    "description": "Verifies the OTP issued by the Issuance OTP API. Depends on the `otp` environment variable populated by Issuance OTP (see dependency/dependency-map.json).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Verify OTP",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.environment.get(\"otp\")) {",
+              "    console.warn(\"WARNING: 'otp' environment variable is empty. \" +",
+              "      \"Verify OTP must run after Issuance OTP with a chained environment file.\");",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"No SOAP Fault returned\", function () {",
+              "    pm.expect(pm.response.text()).to.not.include(\"soapenv:Fault\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "SOAPAction", "value": "urn:VerifyOTP", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "<soapenv:Envelope xmlns:soapenv=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:msgs=\"http://ws.arcot.com/WebFortAuthAPI/7.0/msgs\" xmlns:xsd=\"http://ws.arcot.com/WebFortCommonAPI/7.0/xsd\">\r\n   <soapenv:Header/>\r\n   <soapenv:Body>\r\n      <msgs:VerifyOTP>\r\n         <msgs:userName>test1</msgs:userName>\r\n         <msgs:orgName>testbob</msgs:orgName>\r\n         <msgs:otp>{{otp}}</msgs:otp>\r\n         <msgs:additionalInput>\r\n            <xsd:pairs>\r\n               <xsd:name>AR_WF_AUTH_POLICY</xsd:name>\r\n               <xsd:value>COMMON_OTP_POLICY</xsd:value>\r\n            </xsd:pairs>\r\n         </msgs:additionalInput>\r\n      </msgs:VerifyOTP>\r\n   </soapenv:Body>\r\n</soapenv:Envelope>",
+          "options": {
+            "raw": { "language": "xml" }
+          }
+        },
+        "url": {
+          "raw": "{{verifyOtpHost}}/services/WebFortAuthSvc",
+          "host": [ "{{verifyOtpHost}}" ],
+          "path": [ "services", "WebFortAuthSvc" ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    { "key": "verifyOtpHost", "value": "http://192.168.10.35:9744" }
+  ]
+}

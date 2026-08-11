@@ -1,0 +1,49 @@
+{
+  "info": {
+    "_postman_id": "a1000000-0000-4000-8000-000000000002",
+    "name": "Risk Evaluate",
+    "description": "Evaluates risk for a user session via RiskFort SOAP API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Risk Evaluate",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"No SOAP Fault returned\", function () {",
+              "    pm.expect(pm.response.text()).to.not.include(\"soapenv:Fault\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/xml" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:wsdl=\"http://ws.arcot.com/RiskFortEvaluateRiskAPI/3.0/wsdl\">\r\n<soapenv:Header/>\r\n<soapenv:Body>\r\n<wsdl:EvaluateRiskRequest>\r\n<wsdl:locationContext>\r\n<wsdl:clientIPAddress>1.2.170.60</wsdl:clientIPAddress>\r\n</wsdl:locationContext>\r\n<wsdl:userContext>\r\n<wsdl:orgName>testbob</wsdl:orgName>\r\n<wsdl:userName>test1</wsdl:userName>\r\n</wsdl:userContext>\r\n</wsdl:EvaluateRiskRequest>\r\n</soapenv:Body>\r\n</soapenv:Envelope>"
+        },
+        "url": {
+          "raw": "{{riskEvaluateHost}}/services/RiskFortEvaluateRiskSvc",
+          "host": [ "{{riskEvaluateHost}}" ],
+          "path": [ "services", "RiskFortEvaluateRiskSvc" ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    { "key": "riskEvaluateHost", "value": "http://192.168.10.35:7778" }
+  ]
+}

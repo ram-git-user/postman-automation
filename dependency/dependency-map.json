@@ -1,0 +1,10 @@
+{
+  "_comment": "Key = collection name (matches collections/<key>.json). Value = list of collections that must run BEFORE it, in order, because this collection consumes a variable/state they produce. Collections with no upstream dependency get an empty array. To onboard a new API: 1) drop collections/<new-api>.json  2) add one line here (even if it's just \"new-api\": []). No workflow or script changes needed.",
+
+  "update-user": [],
+  "risk-evaluate": [],
+  "issuance-otp": [],
+  "verify-otp": [
+    "issuance-otp"
+  ]
+}

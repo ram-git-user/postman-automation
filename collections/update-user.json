@@ -1,0 +1,50 @@
+{
+  "info": {
+    "_postman_id": "a1000000-0000-4000-8000-000000000001",
+    "name": "Update User",
+    "description": "Updates an Arcot UDS user record via SOAP.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Update User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"No SOAP Fault returned\", function () {",
+              "    pm.expect(pm.response.text()).to.not.include(\"soap:Fault\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "SOAPAction", "value": "urn:UDS.UpdateUser" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:msgs=\"http://ws.arcot.com/ArcotUserRegistrySvc/1.0/msgs\" xmlns:ns=\"http://ws.arcot.com/UserSchema/1.0\">\r\n<soap:Header/>\r\n<soap:Body>\r\n<msgs:updateUserRequest>\r\n<msgs:userDetailsEx>\r\n<ns:userId>\r\n<ns:orgName>testbob</ns:orgName>\r\n<ns:userName>test1</ns:userName>\r\n</ns:userId>\r\n<ns:emailId qualifier=\"emailid\">jaya@gmail.com</ns:emailId>\r\n<ns:telephoneNumber qualifier=\"telephone\">9487378687</ns:telephoneNumber>\r\n<ns:firstName>jaya</ns:firstName>\r\n<ns:lastName>subha</ns:lastName>\r\n</msgs:userDetailsEx>\r\n</msgs:updateUserRequest>\r\n</soap:Body>\r\n</soap:Envelope>"
+        },
+        "url": {
+          "raw": "{{updateUserHost}}/arcotuds/services/ArcotUserRegistrySvc",
+          "host": [ "{{updateUserHost}}" ],
+          "path": [ "arcotuds", "services", "ArcotUserRegistrySvc" ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    { "key": "updateUserHost", "value": "http://192.168.10.35:7001" }
+  ]
+}
