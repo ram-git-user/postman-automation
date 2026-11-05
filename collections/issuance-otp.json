@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1000000-0000-4000-8000-000000000003",
     "name": "Issuance OTP",
-    "description": "Issues an OTP credential. Extracts the OTP and stores it in the shared environment (variable: otp) so downstream collections such as Verify OTP can consume it across separate Newman runs.",
+    "description": "Test Issues an OTP credential. Extracts the OTP and stores it in the shared environment (variable: otp) so downstream collections such as Verify OTP can consume it across separate Newman runs.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
