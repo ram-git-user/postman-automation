@@ -1,0 +1,4 @@
+reports/*
+!reports/.gitkeep
+environment/shared-environment.postman_environment.json.bak
+node_modules/

@@ -1,0 +1,110 @@
+name: Production Validation & Release
+
+# Runs when develop is merged into main. Re-validates the full suite against
+# main (never trust "it passed on develop" alone - environments/config can
+# differ), and only on success:
+#   1. copies collections/*.json -> collections-production/*.json (the
+#      promoted, known-good artifact set)
+#   2. moves the "last-stable" tag to this commit
+#   3. tags a timestamped stable-<ts> version for history/rollback
+#   4. notifies the team it's ready for production traffic
+# On failure it automatically rolls main back to the previous "last-stable"
+# tag and notifies the team with failure details.
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-release:
+    runs-on: [self-hosted, Windows]
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clean workspace state from previous runs
+        run: |
+          Remove-Item -Path reports -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path reports | Out-Null
+
+      - name: Ensure Node.js and Newman are available
+        run: |
+          if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+            throw "Node.js is not installed on this self-hosted runner."
+          }
+          if (-not (Get-Command newman -ErrorAction SilentlyContinue)) {
+            npm install -g newman newman-reporter-htmlextra
+          }
+
+      - name: Auto-register any new collections
+        run: ./scripts/sync-dependency-map.ps1
+
+      - name: Run full regression against main
+        id: regression
+        run: ./scripts/run-regression.ps1
+
+      - name: Promote validated collections to production directory
+        if: success()
+        run: |
+          New-Item -ItemType Directory -Force -Path collections-production | Out-Null
+          Copy-Item -Path collections/*.json -Destination collections-production/ -Force
+          git config user.name "api-automation-bot"
+          git config user.email "automation@company.com"
+          git add collections-production dependency/dependency-map.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "chore: promote validated collections to production [skip ci]"
+            git push
+          }
+
+      - name: Tag stable release
+        if: success()
+        run: |
+          $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+          git tag -f last-stable
+          git tag "stable-$timestamp"
+          git push origin last-stable --force
+          git push origin "stable-$timestamp"
+
+      - name: Notify - production ready
+        if: success()
+        run: ./scripts/notify.ps1 -Status "PASSED" -Message "Production validation PASSED for commit ${{ github.sha }}. Collections promoted to collections-production/ and tagged as the new last-stable. Ready for production deployment."
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL }}
+
+      - name: Auto rollback main on failure
+        if: failure()
+        run: ./scripts/rollback.ps1 -StableTag "last-stable" -Branch "main"
+
+      - name: Notify - failure & rollback
+        if: failure()
+        run: ./scripts/notify.ps1 -Status "FAILED" -Message "Production validation FAILED for commit ${{ github.sha }}. main has been automatically rolled back to the last-stable tag. Investigate before re-merging."
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-validation-reports-${{ github.run_number }}
+          path: reports/

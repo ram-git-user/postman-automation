@@ -1,0 +1,74 @@
+{
+  "info": {
+    "_postman_id": "a1000000-0000-4000-8000-000000000003",
+    "name": "Issuance OTP",
+    "description": "Issues an OTP credential. Extracts the OTP and stores it in the shared environment (variable: otp) so downstream collections such as Verify OTP can consume it across separate Newman runs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Issuance OTP",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "let response = pm.response.text();",
+              "",
+              "console.log(\"===== SOAP RESPONSE =====\");",
+              "console.log(response);",
+              "",
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "let otpMatch = response.match(/<.*?:otp>(.*?)<\\/.*?:otp>/);",
+              "",
+              "if (otpMatch) {",
+              "    let otp = otpMatch[1].trim();",
+              "    console.log(\"Extracted OTP:\", otp);",
+              "",
+              "    // Stored at the ENVIRONMENT level (not collection level) so it survives",
+              "    // across separate `newman run` invocations when chained via",
+              "    // --export-environment / -e in scripts/run-api.ps1.",
+              "    pm.environment.set(\"otp\", otp);",
+              "",
+              "    console.log(\"Stored OTP:\", pm.environment.get(\"otp\"));",
+              "",
+              "    pm.test(\"OTP extracted successfully\", function () {",
+              "        pm.expect(otp).to.not.be.empty;",
+              "    });",
+              "} else {",
+              "    console.log(\"OTP NOT FOUND\");",
+              "    pm.test(\"OTP extracted successfully\", function () {",
+              "        pm.expect.fail(\"OTP was not found in the SOAP response\");",
+              "    });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/xml" },
+          { "key": "SOAPAction", "value": "urn:CreateCredential" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:msgs=\"http://ws.arcot.com/WebFortIssuanceAPI/7.0/msgs\" xmlns:xsd=\"http://ws.arcot.com/WebFortCommonAPI/7.0/xsd\" xmlns:xsd1=\"http://ws.arcot.com/WebFortIssuanceAPI/7.0/xsd\">\r\n    <soap:Header/>\r\n    <soap:Body>\r\n        <msgs:CredentialRequest>\r\n            <msgs:userName>test1</msgs:userName>\r\n            <msgs:orgName>testbob</msgs:orgName>\r\n            <msgs:otpInput>\r\n                <xsd1:profileName>COMMON_OTP</xsd1:profileName>\r\n            </msgs:otpInput>\r\n        </msgs:CredentialRequest>\r\n    </soap:Body>\r\n</soap:Envelope>"
+        },
+        "url": {
+          "raw": "{{issuanceOtpHost}}/services/WebFortIssuanceSvc",
+          "host": [ "{{issuanceOtpHost}}" ],
+          "path": [ "services", "WebFortIssuanceSvc" ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    { "key": "issuanceOtpHost", "value": "http://192.168.10.35:9744" }
+  ]
+}
